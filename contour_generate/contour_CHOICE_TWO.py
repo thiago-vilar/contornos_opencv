@@ -16,10 +16,6 @@ def remove_background(filepath):
         raise ValueError("Falha ao decodificar a imagem processada.")
     return img[:, :, :3]
 
-def read_and_convert_image(image_array):
-    img = cv2.cvtColor(image_array, cv2.COLOR_BGR2RGB)
-    return img
-
 def create_mask(img):
     """Cria uma máscara binária para a imagem com base em um intervalo de cores."""
     lower_bound = np.array([30, 30, 30])
@@ -35,51 +31,84 @@ def find_centroid(mask):
 
 def extract_and_draw_contours(img, mask):
     """Extrai contornos da máscara e desenha-os na imagem."""
-    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-    img_with_contours = cv2.cvtColor(img, cv2.COLOR_BGR2BGRA)
-    cv2.drawContours(img_with_contours, contours, -1, (0, 255, 0, 255), 1)
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    img_with_contours = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    cv2.drawContours(img_with_contours, contours, -1, (0, 255, 0), 2)
+    centroid = find_centroid(mask)
+    if centroid:
+        cv2.circle(img_with_contours, centroid, 5, (255, 0, 0), -1)
     return img_with_contours, contours
 
 def crop_to_contours(img, contours):
-    """Recorta a imagem para a bounding box mínima que envolve todos os contornos."""
+    """Recorta a imagem para a bounding box mínima que envolve todos os contornos, com margem de 10%."""
     if contours:
-        x, y, w, h = cv2.boundingRect(np.vstack(contours))
-        return img[y:y+h, x:x+w]
+        contour = max(contours, key=cv2.contourArea)
+        x, y, w, h = cv2.boundingRect(contour)
+        margin_x = int(0.1 * w)
+        margin_y = int(0.1 * h)
+        x, y, w, h = x - margin_x, y - margin_y, w + 2 * margin_x, h + 2 * margin_y
+        x, y = max(x, 0), max(y, 0)
+        cropped_image = img[y:min(y+h, img.shape[0]), x:min(x+w, img.shape[1])]
+        # Assegura fundo branco
+        if cropped_image.shape[2] == 4:  # Se tem canal alpha
+            return transform_alpha_mask_to_white_background(cropped_image)
+        return cropped_image
     return img
 
 def transform_alpha_mask_to_white_background(image):
     """Transforma uma imagem com canal alpha em uma imagem com fundo branco."""
-    image_pil = Image.fromarray(image)
-    background = Image.new('RGBA', image_pil.size, (255, 255, 255, 255))
-    return np.array(Image.alpha_composite(background, image_pil.convert('RGBA')).convert('RGB'))
+    if image.shape[2] == 4:  # BGRA
+        alpha_channel = image[:, :, 3]
+        rgb_channels = image[:, :, :3]
+        white_background_image = np.ones_like(rgb_channels, dtype=np.uint8) * 255
+        alpha_factor = alpha_channel[:, :, np.newaxis].astype(np.float32) / 255.0
+        foreground = alpha_factor * rgb_channels.astype(np.float32)
+        background = (1.0 - alpha_factor) * white_background_image.astype(np.float32)
+        composite_image = foreground + background
+        return composite_image.astype(np.uint8)
+    return image  # Assume already RGB
 
-def translate_to_origin(contours, centroid):
-    """Translada contornos para que o centróide seja a origem (0, 0)."""
-    return [contour - centroid for contour in contours]
+def save_largest_contour(contours, centroid):
+    """Salva apenas o maior contorno fechado encontrado transladado para que o centróide esteja na origem."""
+    if contours and centroid:
+        largest_contour = max(contours, key=cv2.contourArea)
+        largest_contour = largest_contour.reshape(-1, 2)  # Convertendo para (N, 2)
+        translated_contour = largest_contour - np.array(centroid)
+        # Assegura que o contorno seja fechado
+        if not np.array_equal(translated_contour[0], translated_contour[-1]):
+            translated_contour = np.vstack([translated_contour, translated_contour[0]])
+        directory = 'contours'
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+        file_number = len(os.listdir(directory)) + 1
+        contour_path = os.path.join(directory, f"largest_cont_{file_number:03d}.pkl")
+        with open(contour_path, 'wb') as f:
+            pickle.dump(translated_contour, f)
+        print(f"Contour saved with centroid at origin: {os.path.abspath(contour_path)}")
 
-def save_contours(contours, centroid):
-    """Salva os contornos detectados transladados para que o centróide esteja na origem."""
-    directory = "contours_by_mask"
-    os.makedirs(directory, exist_ok=True)
-    translated_contours = translate_to_origin(contours, centroid)
-    for i, contour in enumerate(translated_contours):
-        filename_pkl = os.path.join(directory, f"contour{i}.pkl")
-        with open(filename_pkl, 'wb') as f:
-            pickle.dump(contour.reshape(-1, 2), f)
+def save_image(img):
+    """Salva a imagem recortada em formato PNG e imprime o caminho do arquivo."""
+    directory = 'images'
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    image_path = os.path.join(directory, f"output_image_{len(os.listdir(directory)) + 1:03d}.png")
+    Image.fromarray(img).save(image_path)
+    print(f"Image saved as: {os.path.abspath(image_path)}")
 
 def main():
     filepath = input("Digite o caminho da imagem: ")
     img_no_bg = remove_background(filepath)
     mask = create_mask(img_no_bg)
     img_with_contours, contours = extract_and_draw_contours(img_no_bg, mask)
+    cropped_img = crop_to_contours(img_with_contours, contours)
     centroid = find_centroid(mask)
-    
-    img_white_bg = transform_alpha_mask_to_white_background(img_with_contours)
     if centroid:
-        save_contours(contours, centroid)
-    
+        save_largest_contour(contours, centroid)
+    img_white_bg = transform_alpha_mask_to_white_background(cropped_img)
+    save_image(img_white_bg)
+
     plt.imshow(img_white_bg)
-    plt.title("Imagem com Contornos")
+    plt.title("Imagem com Contornos e Centróide")
     plt.axis('off')
     plt.show()
 
