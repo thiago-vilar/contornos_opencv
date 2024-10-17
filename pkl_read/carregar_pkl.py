@@ -12,10 +12,10 @@ def load_and_plot_signature(filename):
 
     # Plotando para verificar se os pontos estão corretos
     plt.figure()
-    plt.scatter(contour[:, 0], contour[:, 1], c='green', s=10)  # Usar scatter garante que não há conexões
+    plt.scatter(contour[:, 0], contour[:, 1], c='hotpink', s=10)  # Usar scatter garante que não há conexões
     plt.axis('equal')  # Ajusta o aspecto para que 1 unidade no eixo x seja igual a 1 unidade no eixo y
     plt.axis('off')  # Oculta os eixos para uma visualização limpa
     plt.show()
 
 # Exemplo de uso
-load_and_plot_signature('contours/full_contour_2.pkl')
+load_and_plot_signature('contours\contour_0.pkl')

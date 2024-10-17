@@ -1,4 +1,5 @@
 import cv2
+import cv2.xfeatures2d
 import numpy as np
 import pickle
 import os
@@ -59,11 +60,11 @@ def detect_and_save_features(mask, feature_type, directory, index):
     """recebe a imagem sem fundo processada em formato png com a máscara alpha em branco (255,255,255),
     limpa a máscara alpha excluindo esses valores e salva o contorno vetorizado, sem a referência da localização do contorno """
     if feature_type == 'SIFT':
-        feature_detector = cv2.SIFT_create()
+        feature_detector = cv2.SIFT()
     elif feature_type == 'SURF':
-        feature_detector = cv2.xfeatures2d.SURF_create()
+        feature_detector = cv2.xfeatures2d.SURF()
     elif feature_type == 'ORB':
-        feature_detector = cv2.ORB_create()
+        feature_detector = cv2.ORB()
     else:
         raise ValueError("Unsupported feature type")
 

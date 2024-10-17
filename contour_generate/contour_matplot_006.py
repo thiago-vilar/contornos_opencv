@@ -13,14 +13,14 @@ def remove_background(filepath):
     img = cv2.imdecode(image_np_array, cv2.IMREAD_UNCHANGED)
     if img is None:
         raise ValueError("Falha ao decodificar a imagem processada.")
-    return img[:, :, :3]  # Remove o canal alpha se houver
-
+    return img[:, :, :3]  
 def read_and_convert_image(image_array):
     img = cv2.cvtColor(image_array, cv2.COLOR_BGR2RGB)
     return img
 
 def create_mask(img, lower_bound, upper_bound):
     mask = cv2.inRange(img, lower_bound, upper_bound)
+    cv2.imwrite('mask.png', mask) 
     return mask
 
 def find_and_draw_contours(img, mask):
@@ -33,54 +33,54 @@ def draw_bounding_box(img, contour):
     cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 5)
     return img
 
-def crop_and_draw_upper_half_contour(img, contour):
-    x, y, w, h = cv2.boundingRect(contour)
-    cropped_height = h // 2
-    cropped_img = img[y:y+cropped_height, x:x+w]
-
-    contour_points = contour[:, 0, :]
-    y_min = np.min(contour_points[:, 1])
-    y_max = np.max(contour_points[:, 1])
-    y_threshold = y_min + (y_max - y_min) / 2
-
-    upper_half_indices = np.where(contour_points[:, 1] <= y_threshold)[0]
-    upper_half_contour = contour_points[upper_half_indices]
-    contour_shifted = upper_half_contour - np.array([x, y])
-
-    # Utilizando matplotlib para desenhar os pontos sem conectar
-    fig, ax = plt.subplots()
-    ax.imshow(cropped_img)
-    ax.scatter(contour_shifted[:, 0], contour_shifted[:, 1], color='green', s=1)
-    ax.set_axis_off()
-    plt.show()
-
-    return cropped_img, contour_shifted
-
-def save_contour_signature(contour_shifted):
-    current_time = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-    filename = f'signature_contours/{current_time}.pkl'
-    os.makedirs(os.path.dirname(filename), exist_ok=True)
+def save_contour_signature(contour):
+    os.makedirs("contours", exist_ok=True)
+    files = os.listdir("contours")
+    num = len(files) + 1  
+    filename = f'contours/full_contour_{num}.pkl'
     with open(filename, 'wb') as f:
-        pickle.dump(contour_shifted, f)
+        pickle.dump(contour, f)
+    return filename
 
 def main():
     filepath = input("Digite o caminho da imagem: ")
     img_no_bg = remove_background(filepath)
     img = read_and_convert_image(img_no_bg)
 
-    lower = np.array([30, 30, 30])
+    plt.figure()
+    plt.imshow(img)
+    plt.title("Imagem Original sem Fundo")
+
+    lower = np.array([100, 100, 100])
     upper = np.array([250, 250, 250])
     mask = create_mask(img, lower, upper)
 
+    plt.figure()
+    plt.imshow(mask, cmap='gray')
+    plt.title("Máscara da Imagem")
+
     img_with_contours, contours = find_and_draw_contours(img, mask)
+    
+    plt.figure()
+    plt.imshow(img_with_contours)
+    plt.title("Imagem com Contornos")
 
     if contours:
         largest_contour = max(contours, key=cv2.contourArea)
         img_with_box = draw_bounding_box(img_with_contours, largest_contour)
-        cropped_img, contour_shifted = crop_and_draw_upper_half_contour(img, largest_contour)
-        save_contour_signature(contour_shifted)
+        
+        plt.figure()
+        plt.imshow(img_with_box)
+        plt.title("Imagem com Caixa Delimitadora")
+        
+        filename = save_contour_signature(largest_contour)  
+        
+        print(f"Contorno completo salvo em: {filename}")
+
     else:
         print("Nenhum contorno encontrado.")
+
+    plt.show()
 
 if __name__ == "__main__":
     main()
