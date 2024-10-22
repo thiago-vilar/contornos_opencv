@@ -31,7 +31,7 @@ def find_centroid(mask):
 
 def extract_and_draw_contours(img, mask):
     """Extrai contornos da máscara e desenha-os na imagem."""
-    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
     img_with_contours = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     cv2.drawContours(img_with_contours, contours, -1, (0, 255, 0), 2)
     centroid = find_centroid(mask)

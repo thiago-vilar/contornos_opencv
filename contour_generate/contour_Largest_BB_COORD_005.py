@@ -12,8 +12,7 @@ def remove_background(filepath):
     img = cv2.imdecode(image_np_array, cv2.IMREAD_UNCHANGED)
     if img is None:
         raise ValueError("Falha ao decodificar a imagem processada.")
-    return img[:, :, :3]  # Remove o canal alpha se houver
-
+    return img[:, :, :3]  
 def read_and_convert_image(image_array):
     img = cv2.cvtColor(image_array, cv2.COLOR_BGR2RGB)
     return img
@@ -33,12 +32,19 @@ def draw_bounding_box(img, contour):
     return img
 
 def save_contour(contour):
-    # Remodela o contorno para o formato (N, 2) antes de salvar
+    directory = "processed_features"
+    os.makedirs(directory, exist_ok=True)
+    num_files = len(os.listdir(directory))
+    
+    filename = os.path.join(directory, f'largest_contour_{num_files + 1:03d}.pkl')
+    
     reshaped_contour = contour.reshape(-1, 2)
-    filename = 'largest_contour_novo.pkl'
+    
     with open(filename, 'wb') as f:
         pickle.dump(reshaped_contour, f)
+    
     print(f"O maior contorno foi salvo em: {filename}")
+
 
 def main():
     filepath = input("Digite o caminho da imagem: ")
@@ -54,7 +60,7 @@ def main():
     if contours:
         largest_contour = max(contours, key=cv2.contourArea)
         img_with_box = draw_bounding_box(img, largest_contour)
-        save_contour(largest_contour)  # Salva o contorno após remodelá-lo
+        save_contour(largest_contour)  
 
     plt.imshow(img_with_box)
     plt.title("Imagem com Caixa Delimitadora")

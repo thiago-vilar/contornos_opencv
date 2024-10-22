@@ -22,7 +22,7 @@ def create_mask(img):
     return cv2.inRange(img, lower_bound, upper_bound)
 
 def extract_contours(mask):
-    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
     if not contours:
         return None
     return max(contours, key=cv2.contourArea)

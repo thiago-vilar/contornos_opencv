@@ -9,8 +9,6 @@ def main():
         with open(filename, 'rb') as f:
             assinatura = pickle.load(f)
 
-        # if contour.ndim == 3 and contour.shape[1] == 1:
-        #     contour = contour.squeeze(axis=1)  # Ajustar para (N, 2)
 
         if not isinstance(assinatura, np.ndarray):
             assinatura = np.array(assinatura)
@@ -22,14 +20,14 @@ def main():
 
         x, y = assinatura[:, 0], assinatura[:, 1]
 
-        # Plotar o contorno usando scatter para garantir que os pontos não se conectem
+ 
         plt.figure(figsize=(8, 6))
-        plt.scatter(x, y, c='blue', s=5)  # Usar scatter em vez de plot com '-o' para evitar conectar pontos
+        plt.scatter(x, y, c='blue', s=5)  
         plt.title('Assinatura do Contorno')
         plt.xlabel('Eixo X')
         plt.ylabel('Eixo Y')
-        plt.gca().invert_yaxis()  # Inverter o eixo Y para alinhamento correto da visualização
-        plt.axis('equal')  # Manter a proporção dos eixos
+        plt.gca().invert_yaxis()  
+        plt.axis('equal')  
         plt.show()
 
     except Exception as e:
